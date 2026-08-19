@@ -1,5 +1,8 @@
 import type {
   Collaborator,
+  CreateProjectResponse,
+  DeleteResponse,
+  DeleteStatus,
   GenerateResponse,
   ProjectDetail,
   ProjectSummary,
@@ -82,6 +85,27 @@ export const api = {
     request<{ activeCollaborators: Collaborator[] }>(
       `/api/projects/${projectId}/presence`,
     ),
+
+  createProject: (username: string, name: string) =>
+    request<CreateProjectResponse>("/api/projects", {
+      method: "POST",
+      body: JSON.stringify({ username, name }),
+    }),
+
+  requestProjectDeletion: (projectId: string, username: string) =>
+    request<{ status: string; requestId: string | null; contributors: string[] }>(
+      `/api/projects/${projectId}/delete/request`,
+      { method: "POST", body: JSON.stringify({ username }) },
+    ),
+
+  getDeletionStatus: (projectId: string) =>
+    request<DeleteStatus>(`/api/projects/${projectId}/delete/status`),
+
+  respondToDeletion: (projectId: string, username: string, approve: boolean) =>
+    request<DeleteResponse>(`/api/projects/${projectId}/delete/vote`, {
+      method: "POST",
+      body: JSON.stringify({ username, approve }),
+    }),
 
   listScenes: (projectId: string) =>
     request<Scene[]>(`/api/projects/${projectId}/scenes`),

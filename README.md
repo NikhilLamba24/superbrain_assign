@@ -88,7 +88,7 @@ See `backend/.env.example` and `frontend/.env.example`.
 | `NEXT_PUBLIC_API_URL` | frontend | FastAPI base URL |
 | `TOGETHER_API_KEY` | backend | Image generation (server-only) |
 | `TOGETHER_IMAGE_MODEL` | backend | Model id (default `black-forest-labs/FLUX.2-dev`) |
-| `SESSION_TTL_SECONDS` | backend | Session expiry (default `120`) |
+| `SESSION_TTL_SECONDS` | backend | Session expiry (default `60`) |
 
 ## Database setup
 
@@ -130,7 +130,7 @@ See `backend/README.md` for backend deployment steps.
 - `TOGETHER_API_KEY` and `SUPABASE_SERVICE_ROLE_KEY` are backend-only; never
   prefixed with `NEXT_PUBLIC_`.
 - The frontend uses only the public anon key with read-only RLS policies.
-- Sessions are temporary identity (heartbeat + 120s expiry), not accounts.
+- Sessions are temporary identity (heartbeat + 60s expiry), not accounts.
 
 ## Known limitations (MVP)
 

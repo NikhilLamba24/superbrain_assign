@@ -60,6 +60,13 @@ def generate_image(scene_id: str, username: str, prompt: str) -> dict:
     image_bytes, content_type = ImageGenerationService().generate(prompt)
     version_id = str(uuid.uuid4())
     image_url = storage_service.upload_scene_image(scene_id, version_id, image_bytes, content_type)
-    return version_service.create_version(
+    result = version_service.create_version(
         scene_id, username, image_url, prompt, version_id=version_id
     )
+    # Record the user as a contributor; their consent is required before the
+    # project admin can delete the project.
+    get_supabase().table("project_contributors").upsert(
+        {"project_id": scene["project_id"], "username": username},
+        on_conflict="project_id,username",
+    ).execute()
+    return result

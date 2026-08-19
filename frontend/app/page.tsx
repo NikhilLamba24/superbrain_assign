@@ -28,6 +28,7 @@ export default function Home() {
     if (!saved) return;
     void api
       .heartbeat(saved.sessionId, saved.sceneId)
+      .then(() => api.getProject(saved.projectId))
       .then(() => {
         setUsername(saved.username);
         setSession(saved);
@@ -37,6 +38,7 @@ export default function Home() {
         clearSession();
         setSession(null);
         setUsername(null);
+        setStep("username");
       });
   }, []);
 
@@ -86,6 +88,31 @@ export default function Home() {
     });
   }, []);
 
+  const handleCreateProject = useCallback(
+    async (name: string) => {
+      if (!username) return;
+      setError(null);
+      try {
+        await api.createProject(username, name);
+        setProjects(await api.listProjects());
+      } catch (err) {
+        setError(err instanceof ApiError ? err.message : "Failed to create the project.");
+      }
+    },
+    [username],
+  );
+
+  const handleProjectDeleted = useCallback(() => {
+    clearSession();
+    setSession(null);
+    setError(null);
+    void api
+      .listProjects()
+      .then(setProjects)
+      .catch(() => {});
+    setStep("projects");
+  }, []);
+
   const handleLeaveWorkspace = useCallback(() => {
     if (session) void api.leaveSession(session.sessionId);
     clearSession();
@@ -93,6 +120,20 @@ export default function Home() {
     setUsername(null);
     setError(null);
     setStep("username");
+  }, [session]);
+
+  // Back to the project list: free the session (so the username/presence is
+  // released) but keep the username — no need to re-enter it.
+  const handleBackToProjects = useCallback(() => {
+    if (session) void api.leaveSession(session.sessionId);
+    clearSession();
+    setSession(null);
+    setError(null);
+    void api
+      .listProjects()
+      .then(setProjects)
+      .catch(() => {});
+    setStep("projects");
   }, [session]);
 
   return (
@@ -103,7 +144,9 @@ export default function Home() {
           username={username}
           projects={projects}
           error={error}
+          creating={false}
           onEnter={handleEnterProject}
+          onCreate={handleCreateProject}
           onSwitchUsername={() => {
             setError(null);
             setUsername(null);
@@ -119,7 +162,9 @@ export default function Home() {
           initialSceneId={session.sceneId}
           onExpired={handleLeaveWorkspace}
           onLeave={handleLeaveWorkspace}
+          onBack={handleBackToProjects}
           onRejoin={handleRejoin}
+          onDeleted={handleProjectDeleted}
         />
       )}
     </main>

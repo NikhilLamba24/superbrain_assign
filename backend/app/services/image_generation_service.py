@@ -57,8 +57,7 @@ class ImageGenerationService:
         if image_resp.status_code != 200:
             raise GenerationError("Could not download the generated image.")
 
-        content_type = image_resp.headers.get("content-type", "image/png")
-        return image_resp.content, content_type
+        return image_resp.content, _sniff_content_type(image_resp.content)
 
     def _mock(self, prompt: str) -> tuple[bytes, str]:
         safe = saxutils.escape(prompt)
@@ -75,3 +74,19 @@ class ImageGenerationService:
             "</svg>"
         )
         return svg.encode("utf-8"), "image/svg+xml"
+
+
+def _sniff_content_type(data: bytes) -> str:
+    """Detect the image type from magic bytes rather than trusting the download's
+    content-type header (Together's CDN can return octet-stream)."""
+    if data[:8] == b"\x89PNG\r\n\x1a\n":
+        return "image/png"
+    if data[:3] == b"\xff\xd8\xff":
+        return "image/jpeg"
+    if data[:4] == b"GIF8":
+        return "image/gif"
+    if data[:4] == b"RIFF" and data[8:12] == b"WEBP":
+        return "image/webp"
+    if b"<svg" in data[:512]:
+        return "image/svg+xml"
+    return "application/octet-stream"

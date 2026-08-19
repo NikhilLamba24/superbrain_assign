@@ -60,9 +60,13 @@ def join(username: str, project_id: str, scene_id: str | None) -> dict:
     if find_active_session(username):
         raise SessionConflictError()
 
-    project = client.table("projects").select("id").eq("id", project_id).execute()
+    project = client.table("projects").select("id, created_by").eq("id", project_id).execute()
     if not project.data:
         raise NotFoundError(f"Project '{project_id}' not found.")
+
+    # The first user to enter a project without a creator becomes its admin.
+    if not project.data[0].get("created_by"):
+        client.table("projects").update({"created_by": username}).eq("id", project_id).execute()
 
     _ensure_user(username)
 
