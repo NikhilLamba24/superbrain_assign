@@ -1,0 +1,99 @@
+import type {
+  Collaborator,
+  GenerateResponse,
+  ProjectDetail,
+  ProjectSummary,
+  Scene,
+  SessionJoinResponse,
+  Version,
+} from "./types";
+
+export const API_URL: string =
+  process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+
+export class ApiError extends Error {
+  status: number;
+  code?: string;
+
+  constructor(message: string, status: number, code?: string) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+    this.code = code;
+  }
+}
+
+async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  let resp: Response;
+  try {
+    resp = await fetch(`${API_URL}${path}`, {
+      ...init,
+      headers: { "Content-Type": "application/json", ...(init?.headers ?? {}) },
+    });
+  } catch {
+    throw new ApiError("Cannot reach the server. Is the backend running?", 0);
+  }
+
+  if (!resp.ok) {
+    let message = `Request failed (${resp.status})`;
+    try {
+      const body = (await resp.json()) as { detail?: unknown; code?: string };
+      if (typeof body.detail === "string") message = body.detail;
+    } catch {
+      // keep the default message when the body is not JSON
+    }
+    throw new ApiError(message, resp.status);
+  }
+
+  return (await resp.json()) as T;
+}
+
+export const api = {
+  checkUsername: (username: string) =>
+    request<{ available: boolean }>("/api/sessions/check", {
+      method: "POST",
+      body: JSON.stringify({ username }),
+    }),
+
+  joinSession: (username: string, projectId: string, sceneId: string | null) =>
+    request<SessionJoinResponse>("/api/sessions/join", {
+      method: "POST",
+      body: JSON.stringify({ username, projectId, sceneId }),
+    }),
+
+  heartbeat: (sessionId: string, sceneId: string | null) =>
+    request<{ success: boolean }>("/api/sessions/heartbeat", {
+      method: "POST",
+      body: JSON.stringify({ sessionId, sceneId }),
+    }),
+
+  leaveSession: (sessionId: string) =>
+    request<{ success: boolean }>("/api/sessions/leave", {
+      method: "POST",
+      body: JSON.stringify({ sessionId }),
+    }),
+
+  listProjects: () => request<ProjectSummary[]>("/api/projects"),
+
+  getProject: (projectId: string) =>
+    request<ProjectDetail>(`/api/projects/${projectId}`),
+
+  getPresence: (projectId: string) =>
+    request<{ activeCollaborators: Collaborator[] }>(
+      `/api/projects/${projectId}/presence`,
+    ),
+
+  listScenes: (projectId: string) =>
+    request<Scene[]>(`/api/projects/${projectId}/scenes`),
+
+  getScene: (sceneId: string) => request<Scene>(`/api/scenes/${sceneId}`),
+
+  generateImage: (sceneId: string, username: string, prompt: string) =>
+    request<GenerateResponse>(`/api/scenes/${sceneId}/generate`, {
+      method: "POST",
+      body: JSON.stringify({ username, prompt }),
+    }),
+
+  listVersions: (sceneId: string) =>
+    request<Version[]>(`/api/scenes/${sceneId}/versions`),
+};

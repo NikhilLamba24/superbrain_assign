@@ -1,0 +1,26 @@
+# dependencies
+node_modules/
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+
+# env & secrets
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# build output
+.next/
+out/
+dist/
+*.egg-info/
+
+# misc
+.DS_Store
+.vercel/
+supabase/.branches/
+supabase/.temp/
+.superbrain/
