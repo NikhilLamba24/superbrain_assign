@@ -26,7 +26,7 @@ Health check: `GET http://localhost:8000/api/health` → `{"status": "ok"}`
 | `TOGETHER_API_KEY` | dev* | Together AI API key for image generation |
 | `TOGETHER_IMAGE_MODEL` | no | Model id (default `black-forest-labs/FLUX.2-dev`) |
 | `TOGETHER_MOCK` | no | `true` generates a local placeholder instead of calling Together AI |
-| `SESSION_TTL_SECONDS` | no | Active-session expiry (default `120`) |
+| `SESSION_TTL_SECONDS` | no | Active-session expiry (default `60`) |
 | `CORS_ORIGINS` | no | Comma-separated allowed origins (default `http://localhost:3000`) |
 
 *`TOGETHER_API_KEY` is required unless `TOGETHER_MOCK=true`.

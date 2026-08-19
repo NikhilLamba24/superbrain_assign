@@ -29,6 +29,7 @@ export interface ProjectSummary {
   name: string;
   sceneCount: number;
   activeCollaborators: number;
+  createdBy: string | null;
 }
 
 export interface ProjectDetail {
@@ -36,6 +37,7 @@ export interface ProjectDetail {
   name: string;
   scenes: Scene[];
   activeCollaborators: Collaborator[];
+  createdBy: string | null;
 }
 
 export interface SessionJoinResponse {
@@ -52,4 +54,26 @@ export interface GenerateResponse {
   sceneId: string;
   prompt: string;
   createdAt: string;
+}
+
+export interface CreateProjectResponse {
+  id: string;
+  name: string;
+  createdBy: string;
+}
+
+export interface DeleteVote {
+  username: string;
+  approved: boolean | null;
+}
+
+export interface DeleteStatus {
+  status: "none" | "pending" | "rejected" | "deleted";
+  requestedBy: string | null;
+  requestId: string | null;
+  responses: DeleteVote[];
+}
+
+export interface DeleteResponse {
+  status: "pending" | "rejected" | "deleted";
 }

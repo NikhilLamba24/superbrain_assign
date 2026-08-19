@@ -17,7 +17,7 @@ class Settings(BaseSettings):
     # Dev/test mode: generates a local placeholder instead of calling Together AI.
     together_mock: bool = False
 
-    session_ttl_seconds: int = 120
+    session_ttl_seconds: int = 60
     cors_origins: str = "http://localhost:3000"
 
 

@@ -27,6 +27,12 @@ class NotFoundError(AppError):
     message = "Not found."
 
 
+class ForbiddenError(AppError):
+    status_code = 403
+    code = "forbidden"
+    message = "You do not have permission to do this."
+
+
 class GenerationError(AppError):
     status_code = 502
     code = "generation_failed"
