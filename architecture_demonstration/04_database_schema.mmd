@@ -1,0 +1,62 @@
+erDiagram
+    users ||--o{ active_sessions : "username"
+    projects ||--o{ scenes : "has"
+    scenes ||--o{ image_versions : "has"
+    scenes ||--o{ active_sessions : "references"
+    projects ||--o{ project_contributors : "has"
+    projects ||--o{ project_delete_requests : "has"
+    project_delete_requests ||--o{ project_delete_responses : "has"
+
+    users {
+        uuid id PK
+        text username UK
+        timestamptz created_at
+    }
+    projects {
+        text id PK
+        text name
+        text created_by
+        timestamptz created_at
+        timestamptz updated_at
+    }
+    scenes {
+        uuid id PK
+        text project_id FK
+        text title
+        text description
+        int position
+        uuid current_version_id FK
+    }
+    image_versions {
+        uuid id PK
+        uuid scene_id FK
+        text created_by
+        int version_number
+        text image_url
+        text prompt
+        timestamptz created_at
+    }
+    active_sessions {
+        uuid id PK
+        text username UK
+        text project_id FK
+        uuid scene_id FK
+        timestamptz last_seen_at
+    }
+    project_contributors {
+        text project_id FK
+        text username
+        timestamptz created_at
+    }
+    project_delete_requests {
+        uuid id PK
+        text project_id FK
+        text requested_by
+        text status
+    }
+    project_delete_responses {
+        uuid id PK
+        uuid request_id FK
+        text username
+        boolean approved
+    }

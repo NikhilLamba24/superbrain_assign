@@ -1,0 +1,51 @@
+flowchart TB
+    subgraph BrowserA["Browser A (whiterabbit)"]
+        UA["Username: whiterabbit"]
+        WA["Workspace - Scene 1"]
+    end
+
+    subgraph BrowserB["Browser B (blackhorse)"]
+        UB["Username: blackhorse"]
+        WB["Workspace - Scene 2"]
+    end
+
+    subgraph VercelFrontend["Vercel - Next.js / React / TypeScript / Tailwind"]
+        UI["Username → Project Select → Workspace"]
+        API["API client (lib/api.ts)"]
+        RT["Realtime client (supabase-js)"]
+    end
+
+    subgraph VercelBackend["Vercel - FastAPI (Python)"]
+        ROUTES["API Routes (/api/...)"]
+        SVC["Services: session, project, scene,\nimage_generation, version, storage"]
+    end
+
+    subgraph Cloud["Supabase Cloud"]
+        PG["PostgreSQL (users, projects, scenes,\nimage_versions, active_sessions,\nproject_contributors, delete_requests)"]
+        STORAGE["Storage (scene-images bucket)"]
+        RT_DB["Realtime (postgres_changes)"]
+    end
+
+    subgraph TogetherAI["Together AI"]
+        FLUX["FLUX.2-dev (images/generations)"]
+    end
+
+    UA --> WA
+    UB --> WB
+    WA --> UI
+    WB --> UI
+    UI --> API
+    UI --> RT
+    API -- "HTTP JSON" --> ROUTES
+    ROUTES --> SVC
+    SVC -- "service-role key" --> PG
+    SVC --> STORAGE
+    SVC -- "POST /images/generations" --> FLUX
+    RT -- "anon key, read-only" --> RT_DB
+    RT_DB --> RT
+    RT -- "presence + version updates" --> WA
+    RT -- "presence + version updates" --> WB
+
+    FLUX -- "image bytes" --> SVC
+    SVC -- "upload + version record" --> STORAGE
+    SVC -- "update scene current_version" --> PG
