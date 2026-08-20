@@ -1,6 +1,8 @@
 import uuid
 from datetime import datetime, timedelta, timezone
 
+from postgrest.exceptions import APIError
+
 from ..core.config import settings
 from ..core.errors import NotFoundError, SessionConflictError, SessionExpiredError
 from ..db.supabase_client import get_supabase
@@ -70,22 +72,32 @@ def join(username: str, project_id: str, scene_id: str | None) -> dict:
 
     _ensure_user(username)
 
-    # The username column is unique, so drop any expired sessions first to make
-    # the username available again (PRD: available after its session expires).
-    client.table("active_sessions").delete().eq("username", username).execute()
-
+    # The username column is unique — that constraint is the arbiter. We must
+    # NOT delete first (an old delete-all could remove an ACTIVE session and
+    # let two users hold the same username). Instead: try the insert; on a
+    # unique violation, the existing row decides — active means the username is
+    # taken (409), expired means it can be replaced (PRD: a username becomes
+    # available again after its session expires).
     now = _now()
     session_id = str(uuid.uuid4())
-    client.table("active_sessions").insert(
-        {
-            "id": session_id,
-            "username": username,
-            "project_id": project_id,
-            "scene_id": scene_id,
-            "last_seen_at": _iso(now),
-            "created_at": _iso(now),
-        }
-    ).execute()
+    row = {
+        "id": session_id,
+        "username": username,
+        "project_id": project_id,
+        "scene_id": scene_id,
+        "last_seen_at": _iso(now),
+        "created_at": _iso(now),
+    }
+    try:
+        client.table("active_sessions").insert(row).execute()
+    except APIError as exc:
+        if exc.code != "23505":  # unique_violation
+            raise
+        if find_active_session(username):
+            raise SessionConflictError()
+        # The only existing row is expired; replace it.
+        client.table("active_sessions").delete().eq("username", username).execute()
+        client.table("active_sessions").insert(row).execute()
 
     return {"session_id": session_id, "collaborators": get_active_collaborators(project_id)}
 
