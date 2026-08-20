@@ -17,24 +17,43 @@ export const API_URL: string =
 export class ApiError extends Error {
   status: number;
   code?: string;
+  cause?: unknown;
 
-  constructor(message: string, status: number, code?: string) {
+  constructor(message: string, status: number, code?: string, cause?: unknown) {
     super(message);
     this.name = "ApiError";
     this.status = status;
     this.code = code;
+    this.cause = cause;
   }
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  let resp: Response;
-  try {
-    resp = await fetch(`${API_URL}${path}`, {
+  const doFetch = (): Promise<Response> =>
+    fetch(`${API_URL}${path}`, {
       ...init,
       headers: { "Content-Type": "application/json", ...(init?.headers ?? {}) },
     });
-  } catch {
-    throw new ApiError("Cannot reach the server. Is the backend running?", 0);
+
+  let resp: Response;
+  try {
+    resp = await doFetch();
+  } catch (cause) {
+    // Network-level failure (e.g. a dead keep-alive connection left over from a
+    // backend restart). Retry once after a short delay before giving up — this
+    // avoids one-off "Cannot reach the server" errors on user actions like
+    // Delete Project. HTTP errors are NOT retried (handled below).
+    await new Promise((r) => setTimeout(r, 500));
+    try {
+      resp = await doFetch();
+    } catch {
+      throw new ApiError(
+        "Cannot reach the server. Is the backend running?",
+        0,
+        undefined,
+        cause instanceof Error ? cause : undefined,
+      );
+    }
   }
 
   if (!resp.ok) {

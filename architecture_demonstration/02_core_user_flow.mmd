@@ -1,0 +1,29 @@
+sequenceDiagram
+    participant A as Browser A (whiterabbit)
+    participant B as Browser B (blackhorse)
+    participant F as FastAPI Backend
+    participant T as Together AI
+    participant S as Supabase
+
+    A->>F: POST /api/sessions/join {username: whiterabbit}
+    F->>S: check active_sessions for collision
+    F-->>A: sessionId + collaborators
+
+    B->>F: POST /api/sessions/join {username: whiterabbit} (duplicate)
+    F-->>B: 409 "already editing"
+    B->>F: POST /api/sessions/join {username: blackhorse}
+
+    loop every 10s
+        A->>F: POST /api/sessions/heartbeat
+        B->>F: POST /api/sessions/heartbeat
+    end
+
+    B->>F: POST /api/scenes/scene_2/generate {prompt}
+    F->>T: POST /v1/images/generations (FLUX.2-dev)
+    T-->>F: image URL
+    F->>S: download + upload to scene-images bucket
+    F->>S: insert image_versions (blackhorse_v1)
+    F->>S: update scenes.current_version_id
+    F-->>B: version info
+    S-->>A: realtime: image_versions INSERT + scenes UPDATE
+    S-->>B: realtime: image_versions INSERT + scenes UPDATE

@@ -139,3 +139,62 @@ def test_project_ownership_and_consent_deletion() -> None:
 
     # Clean up the contributor's session.
     post("/api/sessions/leave", {"sessionId": j["sessionId"]})
+
+
+def test_one_rejection_cancels_request_immediately() -> None:
+    """A single denial must cancel the deletion request right away, even when
+    other contributors have not yet voted — later arrivals must NOT see the
+    consent popup for an already-rejected request."""
+    stamp = int(time.time())
+    admin = f"admin2_{stamp}"
+    contrib_a = f"ca_{stamp}"
+    contrib_b = f"cb_{stamp}"
+
+    _, created = post("/api/projects", {"username": admin, "name": f"Multi {stamp}"})
+    project_id = created["id"]
+
+    sb = create_client(SUPA_URL, SUPA_SERVICE_KEY)
+    scene_id = str(uuid.uuid4())
+    sb.table("scenes").insert(
+        {"id": scene_id, "project_id": project_id, "title": "Scene 1", "position": 1}
+    ).execute()
+
+    sessions = []
+    try:
+        for contrib in (contrib_a, contrib_b):
+            status, j = post(
+                "/api/sessions/join", {"username": contrib, "projectId": project_id}
+            )
+            assert status == 200, j
+            sessions.append(j["sessionId"])
+            post("/api/sessions/heartbeat", {"sessionId": j["sessionId"], "sceneId": scene_id})
+            status, gen = post(
+                f"/api/scenes/{scene_id}/generate",
+                {"username": contrib, "prompt": "work"},
+            )
+            assert status == 200, gen
+
+        # Admin requests deletion: both contributors must consent.
+        _, req = post(f"/api/projects/{project_id}/delete/request", {"username": admin})
+        assert req["status"] == "pending"
+        assert set(req["contributors"]) == {contrib_a, contrib_b}
+
+        # Contributor A rejects while contributor B has NOT voted.
+        status, vote = post(
+            f"/api/projects/{project_id}/delete/vote",
+            {"username": contrib_a, "approve": False},
+        )
+        assert status == 200, vote
+        assert vote["status"] == "rejected"
+
+        # The request is rejected immediately: a later arrival must not see a
+        # pending popup.
+        st = get(f"/api/projects/{project_id}/delete/status")
+        assert st["status"] == "rejected"
+        assert st["responses"][0]["approved"] is False
+
+        # Project still exists.
+        assert get(f"/api/projects/{project_id}")["id"] == project_id
+    finally:
+        for sid in sessions:
+            post("/api/sessions/leave", {"sessionId": sid})

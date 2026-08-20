@@ -1,0 +1,25 @@
+sequenceDiagram
+    participant Admin as Admin (creator)
+    participant Contrib as Co-contributor
+    participant F as FastAPI Backend
+    participant S as Supabase
+
+    Admin->>F: POST /api/projects {username, name}
+    F-->>Admin: project created, created_by = admin
+
+    Contrib->>F: generate image (becomes contributor)
+
+    Admin->>F: POST /api/projects/{id}/delete/request
+    F-->>Admin: pending (requires consent)
+    S-->>Contrib: realtime: delete request
+
+    alt Contributor rejects (red cross)
+        Contrib->>F: POST /vote {approve: false}
+        F-->>Admin: "has work progress, doesn't want to delete"
+        S-->>Admin: realtime: rejected
+    else Contributor approves (green tick)
+        Contrib->>F: POST /vote {approve: true}
+        F-->>Admin: "co-developer, okay with deletion"
+        F->>S: delete project + cascade
+        S-->>Admin: realtime: deleted
+    end

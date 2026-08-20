@@ -213,6 +213,15 @@ def respond_to_deletion(project_id: str, username: str, approve: bool) -> dict:
         on_conflict="request_id,username",
     ).execute()
 
+    # A single rejection cancels the request immediately — the request must not
+    # stay "pending" (and keep showing the popup to later arrivals) while other
+    # contributors have not yet voted.
+    if not approve:
+        client.table("project_delete_requests").update(
+            {"status": "rejected", "updated_at": _iso(_now())}
+        ).eq("id", request["id"]).execute()
+        return {"status": "rejected"}
+
     contributors = _contributor_usernames(client, project_id, exclude=admin)
     responses = (
         client.table("project_delete_responses")
