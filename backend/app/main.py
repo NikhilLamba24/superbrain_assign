@@ -20,7 +20,7 @@ app.include_router(projects.router)
 app.include_router(scenes.router)
 
 
-@app.get("/api/health")
+@app.get("/health")
 def health() -> dict:
     return {"status": "ok", "service": "storysync-backend"}
 
