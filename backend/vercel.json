@@ -4,5 +4,11 @@
     "api/index.py": {
       "maxDuration": 90
     }
-  }
+  },
+  "rewrites": [
+    {
+      "source": "/api/(.*)",
+      "destination": "/api/index.py"
+    }
+  ]
 }
